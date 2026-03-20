@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/google/uuid"
@@ -35,6 +37,37 @@ func enableCORS(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+}
+
+func iceHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r)
+
+	apiKey := os.Getenv("METERED_API_KEY")
+	if apiKey == "" {
+		http.Error(w, "Missing API key", http.StatusInternalServerError)
+		return
+	}
+
+	url := "https://p2pfileshare.metered.live/api/v1/turn/credentials?apiKey=" + apiKey
+
+	resp, err := http.Get(url)
+	if err != nil {
+		http.Error(w, "Failed to fetch ICE servers", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read response", http.StatusInternalServerError)
+		return
+	}
+
+	// Optional: log for debugging
+	log.Println("ICE servers fetched")
+
+	// ✅ Return same response to frontend
+	w.Write(body)
 }
 
 // 🔹 Create session
@@ -112,6 +145,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/session", createSession)
 	http.HandleFunc("/ws", handleWS)
+	http.HandleFunc("/ice", iceHandler)
 
 	log.Println("Server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
