@@ -143,10 +143,14 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	http.HandleFunc("/session", createSession)
 	http.HandleFunc("/ws", handleWS)
 	http.HandleFunc("/ice", iceHandler)
 
 	log.Println("Server running on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
